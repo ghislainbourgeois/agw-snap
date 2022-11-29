@@ -1,0 +1,252 @@
+---
+name: magma-access-gateway
+base: core20
+version: '1.6'
+summary: Magma's core network
+description: Magma's core network
+
+grade: devel
+confinement: devmode
+
+parts:
+
+  magma-deps:
+    plugin: nil
+    build-packages:
+      - wget
+      - software-properties-common
+    override-build: |
+      set -x
+      wget -qO - https://artifactory.magmacore.org:443/artifactory/api/gpg/key/public | apt-key add -
+      add-apt-repository 'deb https://artifactory.magmacore.org/artifactory/debian-test focal-ci main'
+      add-apt-repository 'deb https://artifactory.magmacore.org/artifactory/debian-test focal-1.7.0 main'
+      apt-get update -y
+      apt-get install -y oai-asn1c oai-freediameter
+  #     apt-get install -y bcc-tools libfolly-dev liblfds710 oai-asn1c oai-gnutls oai-nettle oai-freediameter
+
+  patches:
+    plugin: dump
+    source: patches
+    prime:
+      - -*
+
+  telegraf:
+    plugin: nil
+    override-build: |
+      set -x
+      wget --quiet https://dl.influxdata.com/telegraf/releases/telegraf_1.18.2-1_amd64.deb
+      dpkg -i telegraf_1.18.2-1_amd64.deb
+
+  prometheus-cpp:
+    plugin: nil
+    after:
+      - telegraf
+    build-packages:
+      - zlib1g-dev
+      - libcurl4-nss-dev
+    source: https://github.com/jupp0r/prometheus-cpp.git
+    source-type: git
+    source-commit: d8326b2bba945a435f299e7526c403d7a1f68c1f
+    override-build: |
+      set -x
+      git submodule init
+      git submodule update
+      mkdir _build
+      cd _build
+      cmake ..
+      make
+      make install
+
+  redis-cpp:
+    plugin: nil
+    source: https://github.com/cpp-redis/cpp_redis.git
+    source-type: git
+    source-commit: bbe38a7f83de943ffcc90271092d689ae02b3489
+    override-build: |
+      set -x
+      git submodule init
+      git submodule update
+      mkdir build
+      cd build
+      cmake .. -DCMAKE_BUILD_TYPE=Release
+      make
+      make install
+
+  liblfds:
+    plugin: nil
+    override-build: |
+      set -x
+      wget --quiet https://liblfds.org/downloads/liblfds%20release%207.1.0%20source.tar.bz2
+      tar -xf liblfds\ release\ 7.1.0\ source.tar.bz2
+      cd liblfds/liblfds7.1.0/liblfds710/build/gcc_gnumake/
+      make
+      make ar_install
+
+  libgtpn1:
+    plugin: nil
+    source: https://git.osmocom.org/libgtpnl
+    source-type: git
+    override-build: |
+      set -x
+      git reset --hard 345d687
+      autoreconf -fi
+      ./configure
+      make
+      make install
+
+  nettle:
+    plugin: nil
+    override-build: |
+      set -x
+      wget --quiet https://ftp.gnu.org/gnu/nettle/nettle-2.5.tar.gz
+      tar -xf nettle-2.5.tar.gz
+      cd nettle-2.5
+      mkdir build
+      cd build/
+      ../configure --disable-openssl --enable-shared --libdir=/usr/local/lib
+      make
+      make install
+
+  gnutls:
+    plugin: nil
+    after:
+      - nettle
+      - patches
+    build-packages:
+      - autogen
+    override-build: |
+      set -x
+      wget --quiet https://www.gnupg.org/ftp/gcrypt/gnutls/v3.1/gnutls-3.1.28.tar.xz
+      tar xf gnutls-3.1.28.tar.xz
+      cd gnutls-3.1.28
+      patch -p1 -i $SNAPCRAFT_STAGE/gnutls-fseterr.patch
+      cd src/
+      autogen certtool-args.def
+      autogen cli-args.def
+      autogen cli-debug-args.def
+      autogen danetool-args.def
+      autogen ocsptool-args.def
+      autogen p11tool-args.def
+      autogen psk-args.def
+      autogen serv-args.def
+      autogen srptool-args.def
+      autogen tpmtool-args.def
+      cd ..
+      ./configure --with-libnettle-prefix=/usr/local --with-included-libtasn1 --with-included-unistring
+      make
+      make install
+
+  libfolly:
+    plugin: nil
+    source: https://github.com/facebook/folly
+    source-type: git
+    override-build: |
+      set -x
+      python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build
+
+  magma-access-gateway:
+    plugin: nil
+    after:
+      - magma-deps
+      - prometheus-cpp
+      - redis-cpp
+      - liblfds
+      - libgtpn1
+      - nettle
+      - gnutls
+      - libfolly
+    source: https://github.com/magma/magma
+    source-tag: v1.6.1
+    source-type: git
+    build-packages:
+      - apt-transport-https
+      - apt-utils
+      - autoconf
+      - automake
+      - binutils-dev
+      - bison
+      - bzip2
+      - ca-certificates
+      - clang-format-7
+      - cmake
+      - curl
+      - flex
+      - g++
+      - git
+      - gnupg
+      - golang
+      - libboost-all-dev
+      - libconfig-dev
+      - libczmq-dev
+      - libdouble-conversion-dev
+      - libdwarf-dev
+      - libelf-dev
+      - libevent-dev
+      - libgcrypt-dev
+      - libgflags-dev
+      - libgmp3-dev
+      - libgoogle-glog-dev
+      - libgrpc-dev
+      - libgrpc++-dev
+      - libiberty-dev
+      - libidn11-dev
+      - libjemalloc-dev
+      - liblz4-dev
+      - liblzma-dev
+      - libmnl-dev
+      - libprotobuf-dev
+      - libpthread-stubs0-dev
+      - libsctp1
+      - libsctp-dev
+      - libsnappy-dev
+      - libssl-dev
+      - libtins-dev
+      - libtool
+      - libunwind8-dev
+      - libunwind-dev
+      - libxml2-dev
+      - libyaml-cpp-dev
+      - make
+      - ninja-build
+      - nlohmann-json3-dev
+      - perl
+      - pkg-config
+      - protobuf-compiler-grpc
+      - redis-server
+      - software-properties-common
+      - tzdata
+      - unzip
+      - vim
+      - wget
+    override-build: |
+      set -x
+      export CXXFLAGS="-I/usr/include/nlohmann"
+      export MAGMA_ROOT=$(pwd)
+      export PATCH_DIR=$MAGMA_ROOT/third_party/build/patches/libfluid
+      export C_BUILD=$MAGMA_ROOT/c_build
+      mkdir -p $C_BUILD
+      ln -sf /usr/bin/grpc_cpp_plugin /usr/local/bin/grpc_cpp_plugin
+      git clone https://github.com/OpenNetworkingFoundation/libfluid_base.git
+      git -C libfluid_base checkout 56df5e20c49387ab8e6b5cd363c6c10d309f263e
+      pushd libfluid_base
+      git apply "${PATCH_DIR}"/libfluid_base_patches/ExternalEventPatch.patch
+      git apply "${PATCH_DIR}"/libfluid_base_patches/EVLOOP_NO_EXIT_ON_EMPTY_compat.patch
+      ./autogen.sh
+      ./configure
+      make
+      make install
+      popd
+      git clone https://github.com/OpenNetworkingFoundation/libfluid_msg.git
+      git -C libfluid_msg checkout 71a4fccdedfabece730082fbe87ef8ae5f92059f
+      pushd libfluid_msg
+      git apply "${PATCH_DIR}"/libfluid_msg_patches/TunnelDstPatch.patch
+      git apply "${PATCH_DIR}"/libfluid_msg_patches/Add-support-for-setting-OVS-reg8.patch
+      git apply "${PATCH_DIR}"/libfluid_msg_patches/Add-Reg-field-match-support.patch
+      ./autogen.sh
+      ./configure
+      make
+      make install
+      ldconfig
+      popd
+      cd lte/gateway
+      make build_oai
