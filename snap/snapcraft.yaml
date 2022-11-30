@@ -60,40 +60,17 @@ parts:
     source: https://github.com/magma/magma
     source-type: git
     build-packages:
-      - apt-transport-https
-      - apt-utils
-      - bison
-      - build-essential
-      - ca-certificates
       - cmake
       - curl
-      - gcc
-      - gnupg2
-      - g++
-      - iproute2
-      - iputils-ping
-      - flex
       - libconfig-dev
       - libcurl4-openssl-dev
       - libczmq-dev
-      - libgcrypt-dev
       - libgmp3-dev
-      - libidn11-dev
-      - libsctp1
-      - libsqlite3-dev
       - libsctp-dev
+      - libsqlite3-dev
       - libssl-dev
       - libsystemd-dev
-      - lld
-      - net-tools
-      - netbase
-      - python3.8
-      - python-is-python3
-      - python3-distutils
-      - systemd
-      - uuid-dev
-      - vim
-      - libtool=2.4.6-14
+      - pkg-config
     override-build: |
       set -x
       mkdir -p /workspaces/magma /etc/magma/
@@ -103,6 +80,4 @@ parts:
       ln -f -s /workspaces/magma/.bazel-cache-repo /var/cache/bazel-cache-repo
       
       bazel build //lte/gateway/release:magma_deb_pkg
-
-      
-      ls -a /workspaces/magma/bazel-bin/lte/gateway/release/
+      ls -a bazel-bin/lte/gateway/release/
