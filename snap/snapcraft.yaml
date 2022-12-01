@@ -1,30 +1,13 @@
 name: magma-access-gateway
 base: core20
-version: '1.8.0'
-summary: Magma's core network
-description: Magma's core network
+version: '1.9.0'
+summary: Magma's Access Gateway
+description: Magma's Access Gateway is Magma's 4G and 5G core network
 
 grade: devel
 confinement: devmode
 
 parts:
-
-  folly-deps:
-    plugin: nil
-    build-packages:
-      - libgoogle-glog-dev
-      - libgflags-dev
-      - libboost-all-dev
-      - libevent-dev
-      - libdouble-conversion-dev
-      - libboost-chrono-dev
-      - libiberty-dev
-
-  libtins-deps:
-    plugin: nil
-    build-packages:
-      - libpcap-dev=1.9.1-3
-      - libmnl-dev=1.0.4-2
 
   magma-deps:
     plugin: nil
@@ -54,23 +37,27 @@ parts:
     plugin: nil
     after:
       - bazel
-      - folly-deps
-      - libtins-deps
       - magma-deps
     source: https://github.com/magma/magma
     source-type: git
     build-packages:
       - cmake
       - curl
+      - libboost-all-dev
       - libconfig-dev
       - libcurl4-openssl-dev
       - libczmq-dev
+      - libdouble-conversion-dev
+      - libgoogle-glog-dev
       - libgmp3-dev
+      - libmnl-dev=1.0.4-2
+      - libpcap-dev=1.9.1-3
       - libsctp-dev
       - libsqlite3-dev
       - libssl-dev
       - libsystemd-dev
       - pkg-config
+      - python3-dev
     override-build: |
       set -x
       mkdir -p /workspaces/magma /etc/magma/
